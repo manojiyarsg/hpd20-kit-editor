@@ -33,7 +33,7 @@ export function KitTransferLab({ destination, onClose }: Props) {
     }
   };
 
-  const valid = source !== null && source.bytes.length === destination.bytes.length;
+  const valid = source !== null;
   const comparison = valid
     ? compareKitInstruments(source, sourceIndex, destination, destinationIndex)
     : null;
@@ -45,6 +45,8 @@ export function KitTransferLab({ destination, onClose }: Props) {
       "TriggerMap Cross-Backup Transfer — READ-ONLY PREFLIGHT",
       "No backup was modified; this report does NOT validate sample relocation.",
       `Source backup: ${sourceName}; Kit ${src.kitNumber}: ${src.kitName}`,
+      `Source size: ${source?.bytes.length}; destination size: ${destination.bytes.length}`,
+      `Source checksum valid: ${source?.verifyChecksum().valid}; destination checksum valid: ${destination.verifyChecksum().valid}`,
       `Destination kit: ${dst.kitNumber}: ${dst.kitName}`,
       `Source references: ${src.padAssignments}; distinct instrument IDs: ${src.uniqueInstruments.length}`,
       `Factory instrument IDs: ${src.factoryInstrumentIds.length}; user-instrument candidates: ${src.userInstrumentCandidateIds.length}`,
@@ -81,7 +83,9 @@ export function KitTransferLab({ destination, onClose }: Props) {
           <input aria-label="Destination kit number" type="number" min={1} max={200}
             value={destinationIndex + 1} onChange={(e) => setDestinationIndex(Math.max(0, Math.min(199, (Number(e.target.value) || 1) - 1)))} />
         </label>
-        {source && !valid && <p role="alert">Backup sizes differ. Cross-version transfer is blocked.</p>}
+        {source && source.bytes.length !== destination.bytes.length && (
+          <p role="status">Backup sizes differ ({source.bytes.length.toLocaleString()} vs {destination.bytes.length.toLocaleString()} bytes). Read-only inspection is permitted; importing remains blocked until cross-layout and sample compatibility are verified.</p>
+        )}
         {comparison && (
           <div>
             <h3>{comparison.source.kitName} → {comparison.destination.kitName}</h3>
