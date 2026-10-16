@@ -28,3 +28,8 @@ Ambience Type, Size, Wall Type, Shape, Ambience sends, kit EQ enable/parameters,
 5. Preserve backup originals and perform restore only after an independent backup.
 
 Use tools/compare_hs0.py to inspect future controlled comparisons without loading ~67 MB into model context.
+
+## Additional cross-kit structural evidence (BKUP-009)
+The kit 100 nominal block (base 29098) contains three MFX parameter regions starting near +99, +139 and +179, while the MFX types for kit 101 are at kit 101 base 29322 +54/+55/+56. In kit 101's nominal block the +99..+218 region is zero, consistent with kit 102 having all three MFX types set to THRU (0,0,0). In kit 106's nominal block (kit 107's predecessor), +99..+218 contains substantial parameter data, while kit 107 types are (1,13,12). These are strong structural clues that MFX parameters for kit N are stored in the tail of the nominal block for kit N-1.
+
+Do NOT assume the entire +99..+218 range is safe to transfer yet. The precise slot boundaries, kit 1 edge case, and 5-byte tail (+219..+223) need validation. The 224-byte copy currently used by importKit can inadvertently overwrite the following kit's MFX parameters. No hardware-tested import or safe complete-kit patch has been released.
