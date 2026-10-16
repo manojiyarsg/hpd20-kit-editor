@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { Backup } from "./codec/backup";
+import { inventoryKitInstruments } from "./codec/instrumentInventory";
 import { KitList } from "./ui/KitList";
 import { PadSurface } from "./ui/PadSurface";
 import { PadEditor } from "./ui/PadEditor";
@@ -82,6 +83,21 @@ export default function App() {
       t("dlg.saveBackup"),
     );
     if (ok) setDirty(false);
+  };
+
+  const inspectInstruments = () => {
+    if (!backup) return;
+    const inventory = inventoryKitInstruments(backup, selectedKit);
+    const lines = inventory.uniqueInstruments.map((entry) =>
+      `Instrument ${entry.instrumentId}: ${entry.pads.map((p) => `${p.pad}-${p.layer}`).join(", ")} (internal: ${entry.internalIds.join(", ")})`,
+    );
+    const report = [
+      `Kit ${inventory.kitNumber}: ${inventory.kitName}`,
+      `${inventory.uniqueInstruments.length} distinct instrument IDs across ${inventory.padAssignments} layer references`,
+      "", ...lines, "", ...inventory.warnings,
+    ].join("\\n");
+    const blob = new TextEncoder().encode(report);
+    void saveBinaryFile(blob, `Kit-${inventory.kitNumber}-instrument-inventory.txt`, ["txt"], "Save instrument inventory");
   };
 
   const exportKit = async () => {
@@ -214,6 +230,7 @@ export default function App() {
             </div>
             <div className="kit-actions">
               <button onClick={exportKit}>{t("kit.export")}</button>
+              <button onClick={inspectInstruments}>Instrument Inventory</button>
               <button onClick={importKit}>{t("kit.import")}</button>
               <button onClick={() => setScaleOpen(true)}>{t("kit.scale")}</button>
             </div>
