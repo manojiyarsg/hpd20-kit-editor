@@ -1,0 +1,22 @@
+name: Research validation
+on:
+  push:
+    branches: [research/ambience-level-verified]
+  pull_request:
+    paths: ['app/**', 'tools/**']
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm run lint
