@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { Backup } from "./codec/backup";
+import { KitTransferLab } from "./ui/KitTransferLab";
 import { inventoryKitInstruments } from "./codec/instrumentInventory";
 import { KitList } from "./ui/KitList";
 import { PadSurface } from "./ui/PadSurface";
@@ -32,6 +33,7 @@ export default function App() {
   const [printing, setPrinting] = useState(false);
   const [checksum, setChecksum] = useState<boolean | null>(null);
   const [scaleOpen, setScaleOpen] = useState(false);
+  const [transferLabOpen, setTransferLabOpen] = useState(false);
   const [supporter, setSupporter] = useState(isSupporter());
 
   const bump = useCallback(() => {
@@ -231,6 +233,7 @@ export default function App() {
             <div className="kit-actions">
               <button onClick={exportKit}>{t("kit.export")}</button>
               <button onClick={inspectInstruments}>Instrument Inventory</button>
+              <button onClick={() => setTransferLabOpen(true)}>Cross-Backup Transfer Lab</button>
               <button onClick={importKit}>{t("kit.import")}</button>
               <button onClick={() => setScaleOpen(true)}>{t("kit.scale")}</button>
             </div>
@@ -251,6 +254,10 @@ export default function App() {
             />
           </aside>
         </div>
+      )}
+
+      {transferLabOpen && (
+        <KitTransferLab destination={backup} onClose={() => setTransferLabOpen(false)} />
       )}
 
       {scaleOpen && (
