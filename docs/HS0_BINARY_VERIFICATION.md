@@ -40,3 +40,18 @@ Further inspection of BKUP-009 shows nominal +98 is zero in kits 1–199, while 
 The research branch changes backup.ts to use versioned HK02 blobs: 4-byte magic, 4-byte original backup size, 98-byte kit header, 120-byte MFX region, 17 x 68-byte pad blocks. Old 1380-byte .kit files are rejected instead of silently importing with the incorrect ownership. Cross-firmware imports with different backup lengths are rejected.
 
 Local read-only regression testing with BKUP-009 passed five simulated transfers (101->107, 1->200, 200->1, 2->3, 51->52), verifying every logical kit other than the destination remains byte-identical. See tools/test_kit_transfer_layout.py. These tests are **not a hardware validation**; full MFX ownership, sound samples/user instruments, compatibility, and exact playback must still be checked before production use. Do not restore generated experimental files to hardware without a complete original backup and a dedicated test plan.
+
+## Cross-backup sample-aware import: implementation status
+- A **read-only** Cross-Backup Transfer Lab now loads a second backup, validates its MD5, selects source/destination kit slots, and exports an instrument-reference preflight report. It intentionally cannot create an import backup yet.
+- The factory sound-list maps IDs 0..848; 849 is Off. IDs >849 are **user-instrument candidates**. Their sample contents, storage layout and slot mapping are not yet verified.
+- Using BKUP-009, kit 12 contains 17 distinct instrument IDs and 21 active pad-layer references, all in the factory range (highest ID 752). Kit 101 has 18 distinct instrument IDs, including IDs up to 1044. Across all 200 kits in BKUP-009, 176 distinct IDs in the candidate user range 850..1044 are referenced by 65 kits. This is evidence that copying just kit bytes cannot guarantee an identical kit when user samples are involved.
+- BKUP-006/009/011 have identical counts of 176 distinct referenced candidate user IDs; the source file data cannot yet prove whether they are populated or equivalent samples.
+- On a local BKUP-009 test, six simulated isolated kit transfers (12→150, 101→107, 1→200, 200→1, 2→3, 51→52) passed checks that every other kit's designated logical byte regions stayed identical. This does **not** establish device sound equivalence or sample safety.
+- No RIFF/WAVE container header is present in BKUP-009; WAV extraction/copy cannot be implemented by blindly copying ordinary RIFF chunks.
+- The test lab has not been subjected to a full npm/TypeScript build in this environment; the Mac DMG is not ready.
+
+### Remaining release blockers
+1. Reverse engineer or obtain a trustworthy specification for sample metadata, sample bytes, reference tables and storage allocation in HS0.
+2. Establish a collision-safe destination allocation strategy, including free-space and shared-sample detection.
+3. Implement atomic sample copy + reference remapping + complete kit effects/pads transfer and prove untouched destination kits/samples are unchanged.
+4. Build, lint and test the desktop app; validate one controlled restore on HPD-20 hardware.
