@@ -47,6 +47,7 @@ export function KitTransferLab({ destination, onClose }: Props) {
       `Source backup: ${sourceName}; Kit ${src.kitNumber}: ${src.kitName}`,
       `Destination kit: ${dst.kitNumber}: ${dst.kitName}`,
       `Source references: ${src.padAssignments}; distinct instrument IDs: ${src.uniqueInstruments.length}`,
+      `Factory instrument IDs: ${src.factoryInstrumentIds.length}; user-instrument candidates: ${src.userInstrumentCandidateIds.length}`,
       "",
       ...src.uniqueInstruments.map((item) =>
         `Instrument ${item.instrumentId} | ${item.pads.map((p) => p.pad + "-" + p.layer).join(", ")} | internal references: ${item.internalIds.join(",")}`,
@@ -85,6 +86,7 @@ export function KitTransferLab({ destination, onClose }: Props) {
           <div>
             <h3>{comparison.source.kitName} → {comparison.destination.kitName}</h3>
             <p>{comparison.source.uniqueInstruments.length} distinct source instruments across {comparison.source.padAssignments} pad-layer assignments.</p>
+            <p>{comparison.source.factoryInstrumentIds.length} factory IDs; {comparison.source.userInstrumentCandidateIds.length} user-instrument candidates requiring sample verification.</p>
             <p>{comparison.notUsedInDestinationKit.length} source instrument IDs are not referenced by this destination kit. This does NOT mean those samples are missing from the backup.</p>
             <details>
               <summary>Show source instrument references</summary>
