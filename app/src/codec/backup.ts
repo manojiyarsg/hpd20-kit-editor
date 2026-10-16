@@ -3,7 +3,6 @@ import {
   KIT_OFFSET,
   KIT_SIZE,
   KITS_COUNT,
-  KIT_FILE_SIZE,
   PAD_OFFSET,
   PAD_SIZE,
   PADS_PER_KIT,
@@ -90,35 +89,72 @@ export class Backup {
     return new PadAccessor(this.bytes, padBase(kitIndex, padIndex));
   }
 
-  // --- kit-level operations (move kit block + its 17 pad blocks together) ---
+  // --- experimental kit-level operations (research branch only) ---
+  //
+  // Controlled MFX changes show that the MFX parameters for kit N reside in
+  // bytes +99..+218 of the PRECEDING 224-byte record. The kit's own +0..+98
+  // contains its kit settings, including effect types and ambience values.
+  // +219..+223 is an invariant 5-byte record delimiter and is never copied.
+  //
+  // The 120-byte region for kit 1 is in the 224-byte prelude immediately
+  // before KIT_OFFSET; its ownership still needs hardware confirmation.
+  //
+  // Format HK02: magic(4) + source backup length LE(4) + kit head(99)
+  // + MFX parameter area(120) + 17 pads(1156). Never silently import the
+  // old 1380-byte .kit files, which omit/shift the MFX parameter ownership.
+  private static readonly KIT_HEAD_SIZE = 99;
+  private static readonly MFX_PARAMS_SIZE = 120;
+  private static readonly KIT_V2_HEADER_SIZE = 8;
+  private static readonly KIT_V2_SIZE =
+    Backup.KIT_V2_HEADER_SIZE + Backup.KIT_HEAD_SIZE +
+    Backup.MFX_PARAMS_SIZE + PADS_PER_KIT * PAD_SIZE;
 
-  /** Export a kit as a standalone 1380-byte blob (kit block + 17 pad blocks). */
+  private assertKitIndex(index: number): void {
+    if (!Number.isInteger(index) || index < 0 || index >= KITS_COUNT) {
+      throw new Error(`Invalid kit index: ${index}`);
+    }
+  }
+
+  private mfxBase(index: number): number {
+    // For index 0, this is the prelude just before the first kit record.
+    return kitBase(index) - KIT_SIZE + Backup.KIT_HEAD_SIZE;
+  }
+
+  /** Export the kit's settings, preceding-record MFX data and all pads. */
   exportKit(index: number): Uint8Array {
-    const out = new Uint8Array(KIT_FILE_SIZE);
-    out.set(this.bytes.subarray(kitBase(index), kitBase(index) + KIT_SIZE), 0);
+    this.assertKitIndex(index);
+    const out = new Uint8Array(Backup.KIT_V2_SIZE);
+    out.set([72, 75, 48, 50], 0); // "HK02"
+    new DataView(out.buffer).setUint32(4, this.bytes.length, true);
+    const headStart = Backup.KIT_V2_HEADER_SIZE;
+    const mfxStart = headStart + Backup.KIT_HEAD_SIZE;
+    const padsStart = mfxStart + Backup.MFX_PARAMS_SIZE;
+    out.set(this.bytes.subarray(kitBase(index), kitBase(index) + Backup.KIT_HEAD_SIZE), headStart);
+    out.set(this.bytes.subarray(this.mfxBase(index), this.mfxBase(index) + Backup.MFX_PARAMS_SIZE), mfxStart);
     for (let p = 0; p < PADS_PER_KIT; p++) {
-      const src = padBase(index, p);
-      out.set(
-        this.bytes.subarray(src, src + PAD_SIZE),
-        KIT_SIZE + p * PAD_SIZE,
-      );
+      out.set(this.bytes.subarray(padBase(index, p), padBase(index, p) + PAD_SIZE), padsStart + p * PAD_SIZE);
     }
     return out;
   }
 
-  /** Write a 1380-byte kit blob into the given slot. */
+  /** Import an HK02 kit; refuse unknown formats and backup layout mismatch. */
   importKit(index: number, blob: Uint8Array): void {
-    if (blob.length !== KIT_FILE_SIZE) {
-      throw new Error(
-        `Ungültige .kit-Datei: erwartet ${KIT_FILE_SIZE} Bytes, erhalten ${blob.length}.`,
-      );
+    this.assertKitIndex(index);
+    if (blob.length !== Backup.KIT_V2_SIZE ||
+        blob[0] !== 72 || blob[1] !== 75 || blob[2] !== 48 || blob[3] !== 50) {
+      throw new Error("Unsupported .kit file: this experimental build requires HK02 format.");
     }
-    this.bytes.set(blob.subarray(0, KIT_SIZE), kitBase(index));
+    const sourceLength = new DataView(blob.buffer, blob.byteOffset, blob.byteLength).getUint32(4, true);
+    if (sourceLength !== this.bytes.length) {
+      throw new Error("Source and destination backups have different sizes/layouts; refusing unsafe kit import.");
+    }
+    const headStart = Backup.KIT_V2_HEADER_SIZE;
+    const mfxStart = headStart + Backup.KIT_HEAD_SIZE;
+    const padsStart = mfxStart + Backup.MFX_PARAMS_SIZE;
+    this.bytes.set(blob.subarray(headStart, mfxStart), kitBase(index));
+    this.bytes.set(blob.subarray(mfxStart, padsStart), this.mfxBase(index));
     for (let p = 0; p < PADS_PER_KIT; p++) {
-      this.bytes.set(
-        blob.subarray(KIT_SIZE + p * PAD_SIZE, KIT_SIZE + (p + 1) * PAD_SIZE),
-        padBase(index, p),
-      );
+      this.bytes.set(blob.subarray(padsStart + p * PAD_SIZE, padsStart + (p + 1) * PAD_SIZE), padBase(index, p));
     }
   }
 
@@ -134,8 +170,10 @@ export class Backup {
     this.importKit(b, tmp);
   }
 
-  /** Reorder: remove the kit at `from` and reinsert it at `to`, shifting the rest. */
+  /** Reorder without touching adjacent kits' MFX parameters. */
   moveKit(from: number, to: number): void {
+    this.assertKitIndex(from);
+    this.assertKitIndex(to);
     if (from === to) return;
     const blobs = [];
     for (let i = 0; i < KITS_COUNT; i++) blobs.push(this.exportKit(i));
