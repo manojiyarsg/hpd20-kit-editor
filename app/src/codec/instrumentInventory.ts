@@ -14,6 +14,8 @@ export interface KitInstrumentInventory {
   kitName: string;
   uniqueInstruments: InstrumentUse[];
   padAssignments: number;
+  factoryInstrumentIds: number[];
+  userInstrumentCandidateIds: number[];
   warnings: string[];
 }
 
@@ -51,8 +53,10 @@ export function inventoryKitInstruments(backup: Backup, kitIndex: number): KitIn
     kitName: backup.getKit(kitIndex).getName(),
     uniqueInstruments: [...found.values()].sort((a, b) => a.instrumentId - b.instrumentId),
     padAssignments: assignments,
+    factoryInstrumentIds: [...found.keys()].filter((id) => id >= 0 && id < OFF_INSTRUMENT).sort((a, b) => a - b),
+    userInstrumentCandidateIds: [...found.keys()].filter((id) => id > OFF_INSTRUMENT).sort((a, b) => a - b),
     warnings: [
-      "Sample/factory classification is not verified.",
+      "IDs below 849 match the published factory instrument range; IDs above 849 are user-instrument candidates, not verified sample dependencies.",
       "This inventory does not copy sample data or change instrument references.",
       "Inactive layer B references are included intentionally; they may become active later.",
     ],
