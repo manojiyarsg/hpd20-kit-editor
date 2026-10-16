@@ -89,7 +89,7 @@ export default function App() {
     const kit = backup.getKit(selectedKit);
     const sub = kit.getSubName().trim();
     const fn = sanitize(kit.getName() + (sub ? ` (${sub})` : "")) + ".kit";
-    await saveBinaryFile(backup.exportKit(selectedKit), fn, ["kit"], t("dlg.exportKit"));
+    try {\n      await saveBinaryFile(backup.exportKit(selectedKit), fn, ["kit"], t("dlg.exportKit"));\n    } catch (e) {\n      alert((e as Error).message);\n    }
   };
 
   const importKit = async () => {
@@ -143,7 +143,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="topbar">
+      <div role="alert" style={{ padding: "8px 16px", background: "#523b1c", color: "#fff" }}>\n        Experimental kit transfer: HK02 format is not yet hardware-validated. Keep original backups; do not restore experimental exports to your HPD-20.\n      </div>\n      <header className="topbar">
         <strong>TriggerMap</strong>
         <span className="file-name">{fileName}</span>
         {checksum !== null && (
