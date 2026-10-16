@@ -39,6 +39,10 @@ export const KitField = {
   SUBNAME_LEN: 16,
   VOLUME: 30,
   HH_VOLUME: 31,
+  // Verified by controlled BKUP-009 -> BKUP-010 change: Kit 107
+  // MENU > FX > AMBIENCE > EDIT > Level 100 -> 99 changed only
+  // the kit-local byte at +39 (absolute 30705), apart from backup metadata.
+  AMBIENCE_LEVEL: 39,
   SENSITIVITY: 55,
   BALANCE: 67,
 } as const;
