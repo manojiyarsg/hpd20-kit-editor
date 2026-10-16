@@ -92,17 +92,17 @@ export class Backup {
   // --- experimental kit-level operations (research branch only) ---
   //
   // Controlled MFX changes show that the MFX parameters for kit N reside in
-  // bytes +99..+218 of the PRECEDING 224-byte record. The kit's own +0..+98
+  // bytes +99..+218 of the PRECEDING 224-byte record. The kit's own +0..+97
   // contains its kit settings, including effect types and ambience values.
-  // +219..+223 is an invariant 5-byte record delimiter and is never copied.
+  // +98 is padding (overlaps the first pad at the last kit), and\n  // +219..+223 is an invariant 5-byte delimiter; neither is copied.
   //
   // The 120-byte region for kit 1 is in the 224-byte prelude immediately
   // before KIT_OFFSET; its ownership still needs hardware confirmation.
   //
-  // Format HK02: magic(4) + source backup length LE(4) + kit head(99)
+  // Format HK02: magic(4) + source backup length LE(4) + kit head(98)
   // + MFX parameter area(120) + 17 pads(1156). Never silently import the
   // old 1380-byte .kit files, which omit/shift the MFX parameter ownership.
-  private static readonly KIT_HEAD_SIZE = 99;
+  private static readonly KIT_HEAD_SIZE = 98;
   private static readonly MFX_PARAMS_SIZE = 120;
   private static readonly KIT_V2_HEADER_SIZE = 8;
   private static readonly KIT_V2_SIZE =
@@ -117,7 +117,7 @@ export class Backup {
 
   private mfxBase(index: number): number {
     // For index 0, this is the prelude just before the first kit record.
-    return kitBase(index) - KIT_SIZE + Backup.KIT_HEAD_SIZE;
+    return kitBase(index) - KIT_SIZE + 99;
   }
 
   /** Export the kit's settings, preceding-record MFX data and all pads. */
